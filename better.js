@@ -68,7 +68,7 @@ function initBetterTier() {
 }
 
 function resetBetter() {
-    betterState = { selectedPlot: "", selectedTrade: "", commitments: getInitialCommitments(), slipActive: false, slipPhase: null, highlightPhase: null };
+    betterState = { selectedPlot: "", selectedTrade: "", commitments: getInitialCommitments(), slipActive: false, slipPhase: null, highlightPhase: null, extraFeed: [] };
     document.getElementById("better-plot").value = "";
     document.getElementById("better-trade").value = "";
     document.getElementById("cascade-phase").value = "first-fix";
@@ -136,7 +136,10 @@ function renderFeed() {
         { time:"Yesterday 11:30", type:"system", text:"Programme auto-recalculated: Max Energy rejection shifts Plots 47-49 insulation to wc 16/03" },
     ];
 
-    feed.forEach(f => {
+    // Prepend any dynamic feed items from user actions
+    const allFeed = [...(betterState.extraFeed || []), ...feed];
+
+    allFeed.forEach(f => {
         const div = document.createElement("div");
         div.className = `feed-item feed-${f.type}`;
         div.innerHTML = `<span class="feed-time">${f.time}</span><span class="feed-text">${f.text}</span>`;
@@ -346,17 +349,34 @@ function renderCommitments() {
             "rejected": '<span class="dep-gate fail">\u2717 Rejected</span>'
         };
 
+        // Build action buttons based on status
+        let actionsHtml = "";
+        if (c.status === "pending-confirm") {
+            actionsHtml = `
+                <button class="btn btn-success btn-sm btn-confirm">Confirm</button>
+                <button class="btn btn-danger btn-sm btn-reject">Reject</button>
+                <button class="btn btn-ghost btn-sm btn-reschedule">\u{1F4C5} Reschedule</button>
+            `;
+        } else if (c.status === "rejected") {
+            actionsHtml = `
+                ${statusLabels[c.status]}
+                <button class="btn btn-warning btn-sm btn-reschedule">\u{1F4C5} Reschedule</button>
+                <button class="btn btn-primary btn-sm btn-find-alt">\u{1F50D} Find alternative</button>
+            `;
+        } else if (c.status === "rescheduled") {
+            actionsHtml = '<span class="dep-gate pending-gate">\u{1F4C5} Rescheduled</span>';
+        } else if (c.status === "reassigned") {
+            actionsHtml = '<span class="dep-gate pass">\u{1F504} Reassigned</span>';
+        } else {
+            actionsHtml = statusLabels[c.status] || "";
+        }
+
         div.innerHTML = `
             <div class="comm-info">
                 <div class="comm-trade" style="color:${tradeColour}">${c.trade}</div>
                 <div class="comm-detail">${c.task} \u2014 Plot ${c.plot} \u2014 ${c.dateStr} \u2014 ${c.phase}</div>
             </div>
-            <div class="commitment-actions">
-                ${c.status === "pending-confirm" ? `
-                    <button class="btn btn-success btn-sm" data-idx="${idx}">Confirm</button>
-                    <button class="btn btn-danger btn-sm" data-idx="${idx}">Reject</button>
-                ` : statusLabels[c.status]}
-            </div>
+            <div class="commitment-actions">${actionsHtml}</div>
         `;
 
         // Click on trade name to select
@@ -367,31 +387,205 @@ function renderCommitments() {
             renderBetterAll();
         });
 
-        // Confirm/reject buttons
-        const confirmBtn = div.querySelector(".btn-success");
-        const rejectBtn = div.querySelector(".btn-danger");
+        // Confirm button
+        const confirmBtn = div.querySelector(".btn-confirm");
         if (confirmBtn) {
             confirmBtn.addEventListener("click", () => {
-                // Find this commitment in the master list
-                const orig = betterState.commitments.find(x =>
-                    x.trade === c.trade && x.task === c.task && x.plot === c.plot
-                );
+                const orig = findCommitment(c);
                 if (orig) orig.status = "confirmed";
                 renderBetterAll();
             });
         }
+
+        // Reject button
+        const rejectBtn = div.querySelector(".btn-reject");
         if (rejectBtn) {
             rejectBtn.addEventListener("click", () => {
-                const orig = betterState.commitments.find(x =>
-                    x.trade === c.trade && x.task === c.task && x.plot === c.plot
-                );
+                const orig = findCommitment(c);
                 if (orig) orig.status = "rejected";
                 renderBetterAll();
             });
         }
 
+        // Reschedule button
+        const rescheduleBtn = div.querySelector(".btn-reschedule");
+        if (rescheduleBtn) {
+            rescheduleBtn.addEventListener("click", () => {
+                showReschedulePanel(c, div);
+            });
+        }
+
+        // Find alternative button
+        const findAltBtn = div.querySelector(".btn-find-alt");
+        if (findAltBtn) {
+            findAltBtn.addEventListener("click", () => {
+                showAlternativePanel(c, div);
+            });
+        }
+
         list.appendChild(div);
     });
+}
+
+function findCommitment(c) {
+    return betterState.commitments.find(x =>
+        x.trade === c.trade && x.task === c.task && x.plot === c.plot && x.dateStr === c.dateStr
+    );
+}
+
+// --- RESCHEDULE PANEL ---
+function showReschedulePanel(commitment, parentDiv) {
+    // Remove any existing inline panels
+    document.querySelectorAll(".inline-action-panel").forEach(p => p.remove());
+
+    const panel = document.createElement("div");
+    panel.className = "inline-action-panel";
+
+    // Generate available date options (next 5 working days from original)
+    const baseParts = commitment.dateStr.split("/");
+    const baseDay = parseInt(baseParts[0]);
+    const baseMonth = parseInt(baseParts[1]);
+    const offsets = [2, 3, 4, 5, 7]; // working day offsets
+    const dateOptions = offsets.map(off => {
+        const newDay = ((baseDay + off - 1) % 28) + 1;
+        const newMonth = baseDay + off > 28 ? ((baseMonth) % 12) + 1 : baseMonth;
+        return `${String(newDay).padStart(2,"0")}/${String(newMonth).padStart(2,"0")}`;
+    });
+
+    panel.innerHTML = `
+        <div class="inline-panel-header">
+            <strong>Reschedule ${commitment.task}</strong>
+            <button class="btn btn-ghost btn-sm inline-panel-close">\u2715</button>
+        </div>
+        <div class="inline-panel-body">
+            <p class="hint" style="margin-bottom:6px;">Select new date. All downstream tasks will auto-cascade.</p>
+            <div class="reschedule-options">
+                ${dateOptions.map(d => `<button class="btn btn-ghost btn-sm reschedule-date" data-date="${d}">${d}</button>`).join("")}
+            </div>
+        </div>
+    `;
+
+    parentDiv.after(panel);
+
+    // Close button
+    panel.querySelector(".inline-panel-close").addEventListener("click", () => panel.remove());
+
+    // Date selection
+    panel.querySelectorAll(".reschedule-date").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const newDate = btn.dataset.date;
+            const orig = findCommitment(commitment);
+            if (orig) {
+                const oldDate = orig.dateStr;
+                orig.dateStr = newDate;
+                orig.date = `2025-${newDate.split("/").reverse().join("-")}`;
+                orig.status = "rescheduled";
+
+                // Add to feed
+                addFeedItem("system", `${orig.trade} ${orig.task} Plot ${orig.plot} rescheduled: ${oldDate} \u2192 ${newDate}. Downstream tasks recalculated.`);
+            }
+            panel.remove();
+            renderBetterAll();
+        });
+    });
+}
+
+// --- FIND ALTERNATIVE PANEL ---
+const alternativeTrades = {
+    "AR Joinery": [
+        { name:"BK Carpentry", contact:"Ben K", phone:"07700 900777", onTime:82, available:"Mon\u2013Wed next week", note:"Worked on Riverside, knows the house types." },
+        { name:"T&S Joinery", contact:"Tom S", phone:"07700 900888", onTime:74, available:"From Thursday", note:"Cheaper but slower. Good for overflow." },
+    ],
+    "PB Plumbing": [
+        { name:"Mark's Plumbing", contact:"Mark D", phone:"07700 900666", onTime:88, available:"Thu\u2013Fri this week", note:"Reliable. Slightly higher rate but rarely slips." },
+        { name:"Aquaflow", contact:"Steve W", phone:"07700 900555", onTime:70, available:"Next week", note:"Large crew but mixed reviews on finish quality." },
+    ],
+    "C Owen": [
+        { name:"Spark Electrical", contact:"Dan P", phone:"07700 900444", onTime:85, available:"Immediately", note:"Two-man team. Fast but charges premium for short notice." },
+    ],
+    "Max Energy": [
+        { name:"EcoInsulate", contact:"James H", phone:"07700 900333", onTime:90, available:"From Wednesday", note:"Specialist in loft insulation. Very tidy." },
+    ],
+    "Ian Austin": [
+        { name:"Premier Plastering", contact:"Lee M", phone:"07700 900222", onTime:76, available:"Next week", note:"Covers tack and skim. Two-man crew." },
+    ],
+    "Clean": [
+        { name:"SiteClean Ltd", contact:"Office", phone:"07700 900111", onTime:95, available:"Same day", note:"Industrial clean specialists." },
+    ],
+};
+
+function showAlternativePanel(commitment, parentDiv) {
+    // Remove any existing inline panels
+    document.querySelectorAll(".inline-action-panel").forEach(p => p.remove());
+
+    const panel = document.createElement("div");
+    panel.className = "inline-action-panel";
+
+    const alts = alternativeTrades[commitment.trade] || [];
+
+    panel.innerHTML = `
+        <div class="inline-panel-header">
+            <strong>Alternatives for ${commitment.trade}</strong>
+            <button class="btn btn-ghost btn-sm inline-panel-close">\u2715</button>
+        </div>
+        <div class="inline-panel-body">
+            <p class="hint" style="margin-bottom:6px;">${commitment.task} \u2014 Plot ${commitment.plot} \u2014 ${commitment.dateStr}</p>
+            ${alts.length === 0 ? '<div class="empty-state">No alternatives on file for this trade type.</div>' : ""}
+            <div class="alt-trade-list">
+                ${alts.map(a => {
+                    const scoreColour = a.onTime >= 85 ? "var(--green)" : a.onTime >= 75 ? "var(--yellow)" : "var(--red)";
+                    return `
+                        <div class="alt-trade-card">
+                            <div class="alt-trade-header">
+                                <span class="alt-trade-name">${a.name}</span>
+                                <span class="alt-trade-score" style="color:${scoreColour}">${a.onTime}% on-time</span>
+                            </div>
+                            <div class="alt-trade-meta">
+                                \u{1F4F1} ${a.contact} ${a.phone} \u00b7 Available: ${a.available}
+                            </div>
+                            <div class="alt-trade-note">${a.note}</div>
+                            <div class="alt-trade-actions">
+                                <button class="btn btn-success btn-sm btn-assign-alt" data-name="${a.name}" data-contact="${a.contact}">Assign ${a.name}</button>
+                            </div>
+                        </div>
+                    `;
+                }).join("")}
+            </div>
+        </div>
+    `;
+
+    parentDiv.after(panel);
+
+    // Close button
+    panel.querySelector(".inline-panel-close").addEventListener("click", () => panel.remove());
+
+    // Assign buttons
+    panel.querySelectorAll(".btn-assign-alt").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const altName = btn.dataset.name;
+            const altContact = btn.dataset.contact;
+            const orig = findCommitment(commitment);
+            if (orig) {
+                const oldTrade = orig.trade;
+                orig.trade = altName;
+                orig.status = "reassigned";
+
+                // Add to feed
+                addFeedItem("system", `${commitment.task} Plot ${commitment.plot}: reassigned from ${oldTrade} to ${altName}. ${altContact} notified.`);
+                addFeedItem("confirm", `${altName} auto-sent confirmation request for ${commitment.dateStr}.`);
+            }
+            panel.remove();
+            renderBetterAll();
+        });
+    });
+}
+
+// --- FEED HELPERS ---
+function addFeedItem(type, text) {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit" });
+    if (!betterState.extraFeed) betterState.extraFeed = [];
+    betterState.extraFeed.unshift({ time: timeStr, type, text });
 }
 
 // --- COMPANY DETAIL ---

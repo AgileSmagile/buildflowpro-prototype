@@ -635,6 +635,73 @@ main { padding: 0 2rem 2rem; }
 
 .commitment-actions { display: flex; gap: 6px; }
 
+/* Inline action panels (reschedule, find alternative) */
+.inline-action-panel {
+    background: var(--surface-2);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    margin: 4px 0;
+    overflow: hidden;
+    animation: slideIn 0.2s ease-out;
+}
+
+.inline-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(59,130,246,0.08);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
+}
+
+.inline-panel-body {
+    padding: 10px 12px;
+}
+
+.reschedule-options {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.reschedule-date:hover {
+    background: var(--accent) !important;
+    color: white !important;
+    border-color: var(--accent) !important;
+}
+
+/* Alternative trade cards */
+.alt-trade-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.alt-trade-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+}
+
+.alt-trade-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.alt-trade-name { font-weight: 600; font-size: 0.82rem; }
+.alt-trade-score { font-family: var(--mono); font-size: 0.75rem; font-weight: 600; }
+.alt-trade-meta { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 3px; }
+.alt-trade-note { font-size: 0.72rem; color: var(--text-dim); font-style: italic; margin-bottom: 6px; }
+.alt-trade-actions { display: flex; gap: 6px; }
+
+/* Commitment status: rescheduled + reassigned */
+.commitment-item.rescheduled { border-left-color: var(--accent); }
+.commitment-item.reassigned { border-left-color: var(--purple); }
+
 /* Company detail */
 .detail-stats {
     display: flex;
