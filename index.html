@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SitePulse — Build Programme Prototype</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="header-inner">
+            <h1>SitePulse</h1>
+            <p class="subtitle">Construction Build Programme — Concept Prototype</p>
+        </div>
+        <nav class="tier-nav">
+            <button class="tier-btn active" data-tier="good">Good</button>
+            <button class="tier-btn" data-tier="better">Better</button>
+            <button class="tier-btn" data-tier="even-better">Even Better</button>
+        </nav>
+    </header>
+
+    <main>
+        <!-- Tier description banner -->
+        <div class="tier-banner" id="tier-banner">
+            <div class="tier-label" id="tier-label">Good</div>
+            <p class="tier-desc" id="tier-desc"></p>
+        </div>
+
+        <!-- GOOD TIER -->
+        <section id="tier-good" class="tier-content active">
+            <div class="phase-tabs">
+                <button class="phase-tab active" data-phase="first-fix">1st Fix</button>
+                <button class="phase-tab" data-phase="plaster">Plaster Fix</button>
+                <button class="phase-tab" data-phase="second-fix">2nd Fix</button>
+                <button class="phase-tab" data-phase="final">Final Fix</button>
+            </div>
+            <div class="grid-wrapper">
+                <div class="grid-controls">
+                    <select id="good-filter-trade" class="filter-select">
+                        <option value="">All trades</option>
+                    </select>
+                    <div class="legend">
+                        <span class="legend-item"><span class="dot completed"></span> Completed</span>
+                        <span class="legend-item"><span class="dot scheduled"></span> Scheduled</span>
+                        <span class="legend-item"><span class="dot missed"></span> Missed</span>
+                        <span class="legend-item"><span class="dot inspection"></span> Inspection</span>
+                    </div>
+                </div>
+                <div class="grid-scroll">
+                    <table id="good-grid" class="programme-grid"></table>
+                </div>
+            </div>
+            <div class="notification-panel" id="good-notifications">
+                <h3>Notifications</h3>
+                <p class="hint">Click any cell to simulate a schedule change and see who gets notified.</p>
+                <div class="notification-list" id="good-notification-list"></div>
+            </div>
+        </section>
+
+        <!-- BETTER TIER -->
+        <section id="tier-better" class="tier-content">
+            <div class="better-layout">
+                <div class="better-left">
+                    <div class="commitment-panel">
+                        <h3>Trade Commitments</h3>
+                        <p class="hint">Trades confirm or reject slots. Unconfirmed work can't proceed.</p>
+                        <div id="commitment-list" class="commitment-list"></div>
+                    </div>
+                    <div class="dependency-panel">
+                        <h3>Dependency Gates</h3>
+                        <p class="hint">Each phase unlocks only when the prior phase is signed off.</p>
+                        <div id="dependency-viz" class="dependency-viz"></div>
+                    </div>
+                </div>
+                <div class="better-right">
+                    <div class="cascade-panel">
+                        <h3>Cascade Simulator</h3>
+                        <p class="hint">Slip a task and watch downstream dates shift automatically.</p>
+                        <div class="cascade-controls">
+                            <select id="cascade-plot" class="filter-select">
+                                <option value="">Select plot...</option>
+                            </select>
+                            <select id="cascade-phase" class="filter-select">
+                                <option value="first-fix">1st Fix</option>
+                                <option value="plaster">Plaster Fix</option>
+                                <option value="second-fix">2nd Fix</option>
+                                <option value="final">Final Fix</option>
+                            </select>
+                            <button id="cascade-slip-btn" class="btn btn-warning">Simulate 2-Day Slip</button>
+                        </div>
+                        <div id="cascade-timeline" class="cascade-timeline"></div>
+                    </div>
+                    <div class="forecast-panel">
+                        <h3>Probabilistic Forecast</h3>
+                        <p class="hint">Completion confidence built from historical trade performance data.</p>
+                        <div id="forecast-viz" class="forecast-viz"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="materials-panel">
+                <h3>Material Confirmation Gates</h3>
+                <p class="hint">Work can't be booked until materials are confirmed on site.</p>
+                <div id="materials-list" class="materials-list"></div>
+            </div>
+        </section>
+
+        <!-- EVEN BETTER TIER -->
+        <section id="tier-even-better" class="tier-content">
+            <div class="even-better-layout">
+                <div class="auto-programme-panel">
+                    <h3>Auto-Generated Programme</h3>
+                    <p class="hint">Define plots and build sequence. The system generates the optimal schedule from confirmed trade availability, materials, and historical pace.</p>
+                    <div class="auto-controls">
+                        <button id="auto-generate-btn" class="btn btn-primary">Generate Optimal Programme</button>
+                        <span class="auto-status" id="auto-status"></span>
+                    </div>
+                    <div id="auto-programme-grid" class="auto-programme-grid"></div>
+                </div>
+                <div class="even-better-columns">
+                    <div class="capacity-panel">
+                        <h3>Trade Capacity Marketplace</h3>
+                        <p class="hint">Trades signal availability. The system matches capacity to demand across sites.</p>
+                        <div id="capacity-list" class="capacity-list"></div>
+                    </div>
+                    <div class="delay-panel">
+                        <h3>Delay Attribution</h3>
+                        <p class="hint">Every slip is tracked: who, why, what it cost in programme days. Data nobody in residential construction has at scale.</p>
+                        <div id="delay-chart" class="delay-chart"></div>
+                    </div>
+                    <div class="portfolio-panel">
+                        <h3>Multi-Site Portfolio</h3>
+                        <p class="hint">Contracts manager view: 6 sites, one dashboard. Where are the pinch points?</p>
+                        <div id="portfolio-viz" class="portfolio-viz"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>SitePulse — Concept prototype built for Ryan Godliman by <a href="https://smagile.xyz" target="_blank">smagile</a></p>
+    </footer>
+
+    <script src="data.js"></script>
+    <script src="good.js"></script>
+    <script src="better.js"></script>
+    <script src="even-better.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
