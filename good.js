@@ -53,6 +53,20 @@ function initGoodTier() {
         renderGoodGrid(activePhase);
     });
 
+    document.getElementById("good-reset-btn").addEventListener("click", resetGood);
+
+    renderGoodGrid("first-fix");
+}
+
+function resetGood() {
+    // Reset trade filter
+    document.getElementById("good-filter-trade").value = "";
+    // Reset phase to 1st Fix
+    document.querySelectorAll(".phase-tab").forEach(t => t.classList.remove("active"));
+    document.querySelector('.phase-tab[data-phase="first-fix"]').classList.add("active");
+    // Clear notifications
+    document.getElementById("good-notification-list").innerHTML = "";
+    // Re-render
     renderGoodGrid("first-fix");
 }
 

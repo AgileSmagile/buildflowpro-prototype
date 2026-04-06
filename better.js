@@ -5,6 +5,8 @@ let betterState = {
     selectedTrade: "",
     commitments: [],
     slipActive: false,
+    slipPhase: null, // which phase has the simulated slip
+    highlightPhase: null, // phase currently selected in cascade dropdown
 };
 
 function getInitialCommitments() {
@@ -54,13 +56,22 @@ function initBetterTier() {
     document.getElementById("better-reset-btn").addEventListener("click", resetBetter);
     document.getElementById("cascade-slip-btn").addEventListener("click", simulateCascade);
 
+    // Phase dropdown highlights the Gantt phase
+    const cascadePhase = document.getElementById("cascade-phase");
+    cascadePhase.addEventListener("change", () => {
+        const phaseName = { "first-fix":"1st Fix", "plaster":"Plaster Fix", "second-fix":"2nd Fix", "final":"Final Fix" }[cascadePhase.value];
+        betterState.highlightPhase = phaseName;
+        renderBetterGantt();
+    });
+
     renderBetterAll();
 }
 
 function resetBetter() {
-    betterState = { selectedPlot: "", selectedTrade: "", commitments: getInitialCommitments(), slipActive: false };
+    betterState = { selectedPlot: "", selectedTrade: "", commitments: getInitialCommitments(), slipActive: false, slipPhase: null, highlightPhase: null };
     document.getElementById("better-plot").value = "";
     document.getElementById("better-trade").value = "";
+    document.getElementById("cascade-phase").value = "first-fix";
     document.getElementById("cascade-slip-btn").textContent = "Simulate 2-Day Slip";
     document.getElementById("cascade-slip-btn").className = "btn btn-warning";
     renderBetterAll();
@@ -163,6 +174,28 @@ function renderBetterGantt() {
 
     const tbody = document.createElement("tbody");
     let dayOffset = 0;
+    const slipDays = 2;
+
+    // Pre-calculate slip offsets if cascade is active
+    let slipStarted = false;
+    let cumulativeSlip = 0;
+    const slipOffsets = {};
+    if (betterState.slipActive && betterState.slipPhase) {
+        let tempOffset = 0;
+        DATA.buildSequence.forEach(phase => {
+            phase.tasks.forEach((t, i) => {
+                if (phase.phase === betterState.slipPhase && i === 0 && !slipStarted) {
+                    slipStarted = true;
+                    cumulativeSlip = slipDays;
+                }
+                slipOffsets[t.task] = cumulativeSlip;
+                tempOffset += t.days;
+            });
+        });
+    }
+    // Reset for the main loop
+    slipStarted = false;
+    cumulativeSlip = 0;
 
     DATA.buildSequence.forEach(phase => {
         // Phase header
@@ -170,7 +203,15 @@ function renderBetterGantt() {
         const phTd = document.createElement("td");
         phTd.colSpan = totalDays + 3;
         phTd.className = "gantt-phase-header";
+        // Highlight the phase selected in cascade dropdown
+        if (betterState.highlightPhase === phase.phase || betterState.slipPhase === phase.phase) {
+            phTd.style.borderLeft = "3px solid var(--orange)";
+            phTd.style.background = "rgba(249,115,22,0.1)";
+        }
         phTd.textContent = phase.phase;
+        if (betterState.slipActive && betterState.slipPhase === phase.phase) {
+            phTd.textContent += " \u2014 \u26A0\uFE0F 2-day slip applied";
+        }
         phRow.appendChild(phTd);
         tbody.appendChild(phRow);
 
@@ -221,13 +262,33 @@ function renderBetterGantt() {
             statusTd.innerHTML = badges[cStatus] || badges["no-data"];
             row.appendChild(statusTd);
 
+            // Calculate this task's slip offset
+            const taskSlip = slipOffsets[t.task] || 0;
+
             // Day cells
             for (let d = 0; d < totalDays; d++) {
                 const td = document.createElement("td");
                 if (d % 5 === 0) td.style.borderLeft = "2px solid var(--border)";
 
-                if (d >= dayOffset && d < dayOffset + t.days) {
-                    // Bar cell
+                const originalStart = dayOffset;
+                const originalEnd = dayOffset + t.days;
+                const shiftedStart = dayOffset + taskSlip;
+                const shiftedEnd = shiftedStart + t.days;
+                const inOriginal = d >= originalStart && d < originalEnd;
+                const inShifted = d >= shiftedStart && d < shiftedEnd;
+
+                if (taskSlip > 0) {
+                    // Cascade active for this task
+                    if (inOriginal && !inShifted) {
+                        // Ghost: where it was
+                        td.className = "gantt-bar-ghost";
+                    } else if (inShifted) {
+                        // Shifted position
+                        td.className = "gantt-bar-shifted";
+                        if (d === shiftedStart) td.textContent = `+${taskSlip}d`;
+                    }
+                } else if (inOriginal) {
+                    // Normal bar
                     const barClass = cStatus === "confirmed" ? "gantt-bar-confirmed" :
                         cStatus === "pending-confirm" ? "gantt-bar-pending" :
                         cStatus === "rejected" ? "gantt-bar-rejected" :
@@ -468,21 +529,28 @@ function renderCascade() {
 function simulateCascade() {
     if (betterState.slipActive) {
         betterState.slipActive = false;
+        betterState.slipPhase = null;
         document.getElementById("cascade-slip-btn").textContent = "Simulate 2-Day Slip";
         document.getElementById("cascade-slip-btn").className = "btn btn-warning";
         renderCascade();
+        renderBetterGantt();
         return;
     }
 
+    const phaseFilter = document.getElementById("cascade-phase").value;
+    const phaseName = { "first-fix":"1st Fix", "plaster":"Plaster Fix", "second-fix":"2nd Fix", "final":"Final Fix" }[phaseFilter];
+
     betterState.slipActive = true;
+    betterState.slipPhase = phaseName;
     document.getElementById("cascade-slip-btn").textContent = "Reset Cascade";
     document.getElementById("cascade-slip-btn").className = "btn btn-ghost";
+
+    // Re-render the Gantt with slip overlay
+    renderBetterGantt();
 
     const timeline = document.getElementById("cascade-timeline");
     const rows = timeline.querySelectorAll(".cascade-row");
     const slipDays = 2;
-    const phaseFilter = document.getElementById("cascade-phase").value;
-    const phaseName = { "first-fix":"1st Fix", "plaster":"Plaster Fix", "second-fix":"2nd Fix", "final":"Final Fix" }[phaseFilter];
 
     let slipStarted = false;
     let cumulativeSlip = 0;
