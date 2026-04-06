@@ -59,27 +59,63 @@
 
         <!-- BETTER TIER -->
         <section id="tier-better" class="tier-content">
+            <!-- Context bar: plot + trade selectors, reset -->
+            <div class="better-context-bar">
+                <div class="context-selectors">
+                    <select id="better-plot" class="filter-select">
+                        <option value="">All plots</option>
+                    </select>
+                    <select id="better-trade" class="filter-select">
+                        <option value="">All trades</option>
+                    </select>
+                </div>
+                <button id="better-reset-btn" class="btn btn-ghost">Reset All</button>
+            </div>
+
+            <!-- Top row: at-a-glance warnings + live feed -->
+            <div class="better-glance-row">
+                <div class="glance-panel warnings-panel">
+                    <h3>Warnings</h3>
+                    <div id="better-warnings" class="warnings-list"></div>
+                </div>
+                <div class="glance-panel feed-panel">
+                    <h3>Live Feed</h3>
+                    <div id="better-feed" class="feed-list"></div>
+                </div>
+            </div>
+
+            <!-- Main Gantt with risk overlay -->
+            <div class="better-gantt-panel">
+                <h3>Programme Timeline <span class="gantt-subtitle">— commitment status mapped to schedule</span></h3>
+                <div class="gantt-legend">
+                    <span class="legend-item"><span class="dot" style="background:var(--green)"></span> Confirmed</span>
+                    <span class="legend-item"><span class="dot" style="background:var(--yellow)"></span> Awaiting</span>
+                    <span class="legend-item"><span class="dot" style="background:var(--red)"></span> Rejected / At risk</span>
+                    <span class="legend-item"><span class="dot" style="background:var(--accent)"></span> Gate / Inspection</span>
+                    <span class="legend-item"><span class="dot" style="background:var(--text-dim);opacity:0.3"></span> Unselected</span>
+                </div>
+                <div id="better-gantt" class="better-gantt"></div>
+            </div>
+
             <div class="better-layout">
+                <!-- Left: commitments sorted by date + company detail -->
                 <div class="better-left">
                     <div class="commitment-panel">
-                        <h3>Trade Commitments</h3>
-                        <p class="hint">Trades confirm or reject slots. Unconfirmed work can't proceed.</p>
+                        <h3>Trade Commitments <span class="panel-count" id="commitment-count"></span></h3>
+                        <p class="hint">Sorted by date. Trades confirm or reject slots. Unconfirmed work blocks downstream.</p>
                         <div id="commitment-list" class="commitment-list"></div>
                     </div>
-                    <div class="dependency-panel">
-                        <h3>Dependency Gates</h3>
-                        <p class="hint">Each phase unlocks only when the prior phase is signed off.</p>
-                        <div id="dependency-viz" class="dependency-viz"></div>
+                    <div class="company-detail-panel" id="company-detail-panel">
+                        <h3>Trade Detail <span class="panel-subtitle" id="company-detail-name">— select a trade</span></h3>
+                        <div id="company-detail" class="company-detail"></div>
                     </div>
                 </div>
+                <!-- Right: cascade + dependencies + materials -->
                 <div class="better-right">
                     <div class="cascade-panel">
                         <h3>Cascade Simulator</h3>
                         <p class="hint">Slip a task and watch downstream dates shift automatically.</p>
                         <div class="cascade-controls">
-                            <select id="cascade-plot" class="filter-select">
-                                <option value="">Select plot...</option>
-                            </select>
                             <select id="cascade-phase" class="filter-select">
                                 <option value="first-fix">1st Fix</option>
                                 <option value="plaster">Plaster Fix</option>
@@ -90,48 +126,93 @@
                         </div>
                         <div id="cascade-timeline" class="cascade-timeline"></div>
                     </div>
-                    <div class="forecast-panel">
-                        <h3>Probabilistic Forecast</h3>
-                        <p class="hint">Completion confidence built from historical trade performance data.</p>
-                        <div id="forecast-viz" class="forecast-viz"></div>
+                    <div class="dependency-panel">
+                        <h3>Dependency Gates</h3>
+                        <p class="hint">Each phase unlocks only when the prior phase is signed off.</p>
+                        <div id="dependency-viz" class="dependency-viz"></div>
                     </div>
                 </div>
             </div>
-            <div class="materials-panel">
-                <h3>Material Confirmation Gates</h3>
-                <p class="hint">Work can't be booked until materials are confirmed on site.</p>
-                <div id="materials-list" class="materials-list"></div>
+
+            <!-- Bottom: forecast + materials side by side -->
+            <div class="better-bottom-row">
+                <div class="forecast-panel">
+                    <h3>Probabilistic Forecast</h3>
+                    <p class="hint">Completion confidence per trade, built from historical performance. Improves with every completed job.</p>
+                    <div id="forecast-viz" class="forecast-viz"></div>
+                </div>
+                <div class="materials-panel">
+                    <h3>Material Confirmation Gates</h3>
+                    <p class="hint">Work can't be booked until materials are confirmed on site.</p>
+                    <div id="materials-list" class="materials-list"></div>
+                </div>
             </div>
         </section>
 
         <!-- EVEN BETTER TIER -->
         <section id="tier-even-better" class="tier-content">
-            <div class="even-better-layout">
-                <div class="auto-programme-panel">
-                    <h3>Auto-Generated Programme</h3>
-                    <p class="hint">Define plots and build sequence. The system generates the optimal schedule from confirmed trade availability, materials, and historical pace.</p>
-                    <div class="auto-controls">
-                        <button id="auto-generate-btn" class="btn btn-primary">Generate Optimal Programme</button>
-                        <span class="auto-status" id="auto-status"></span>
-                    </div>
-                    <div id="auto-programme-grid" class="auto-programme-grid"></div>
+            <div class="eb-context-bar">
+                <div class="context-selectors">
+                    <span class="context-label">Viewing: Oakfield Phase 2</span>
+                    <span class="context-date">Today: Wed 12 Feb 2025 (Day 4)</span>
                 </div>
-                <div class="even-better-columns">
-                    <div class="capacity-panel">
-                        <h3>Trade Capacity Marketplace</h3>
-                        <p class="hint">Trades signal availability. The system matches capacity to demand across sites.</p>
-                        <div id="capacity-list" class="capacity-list"></div>
-                    </div>
-                    <div class="delay-panel">
-                        <h3>Delay Attribution</h3>
-                        <p class="hint">Every slip is tracked: who, why, what it cost in programme days. Data nobody in residential construction has at scale.</p>
-                        <div id="delay-chart" class="delay-chart"></div>
-                    </div>
-                    <div class="portfolio-panel">
-                        <h3>Multi-Site Portfolio</h3>
-                        <p class="hint">Contracts manager view: 6 sites, one dashboard. Where are the pinch points?</p>
-                        <div id="portfolio-viz" class="portfolio-viz"></div>
-                    </div>
+                <button id="eb-reset-btn" class="btn btn-ghost">Reset All</button>
+            </div>
+
+            <!-- Live programme Gantt with today line, plan vs reality -->
+            <div class="auto-programme-panel">
+                <h3>Live Programme <span class="gantt-subtitle">— plan vs reality with auto-optimisation</span></h3>
+                <div class="auto-controls">
+                    <button id="auto-generate-btn" class="btn btn-primary">Generate Optimal Programme</button>
+                    <span class="auto-status" id="auto-status"></span>
+                </div>
+                <div class="gantt-legend">
+                    <span class="legend-item"><span class="dot" style="background:var(--green)"></span> Complete</span>
+                    <span class="legend-item"><span class="dot" style="background:var(--accent)"></span> Planned (future)</span>
+                    <span class="legend-item"><span class="dot" style="background:var(--orange)"></span> Slipped from plan</span>
+                    <span class="legend-item"><span class="dot" style="background:var(--red)"></span> Blocked / At risk</span>
+                    <span class="legend-item" style="border-left:2px dashed var(--yellow);padding-left:6px;">Today</span>
+                </div>
+                <div id="auto-programme-grid" class="auto-programme-grid"></div>
+            </div>
+
+            <!-- Tooltip container (positioned absolutely) -->
+            <div id="eb-tooltip" class="eb-tooltip"></div>
+
+            <div class="even-better-columns">
+                <div class="capacity-panel">
+                    <h3>Trade Capacity Marketplace</h3>
+                    <p class="hint">Trades signal availability. The system matches capacity to demand across sites.</p>
+                    <div id="capacity-list" class="capacity-list"></div>
+                </div>
+                <div class="delay-panel">
+                    <h3>Delay Attribution</h3>
+                    <p class="hint">Every slip is tracked: who, why, what it cost in programme days.</p>
+                    <div id="delay-chart" class="delay-chart"></div>
+                </div>
+                <div class="portfolio-panel">
+                    <h3>Multi-Site Portfolio</h3>
+                    <p class="hint">Contracts manager view: 6 sites, one dashboard.</p>
+                    <div id="portfolio-viz" class="portfolio-viz"></div>
+                </div>
+            </div>
+
+            <!-- Field companion + supplier intelligence + additional applications -->
+            <div class="eb-bottom-section">
+                <div class="field-companion-panel">
+                    <h3>Field Companion (Mobile / Tablet)</h3>
+                    <p class="hint">What site managers and trades see on their devices when on site.</p>
+                    <div class="device-mockups" id="device-mockups"></div>
+                </div>
+                <div class="supplier-intel-panel">
+                    <h3>Supplier Intelligence</h3>
+                    <p class="hint">Reliability stats, field notes, automated performance scoring.</p>
+                    <div id="supplier-intel" class="supplier-intel"></div>
+                </div>
+                <div class="other-apps-panel">
+                    <h3>Additional Applications</h3>
+                    <p class="hint">Where else does this data go?</p>
+                    <div id="other-apps" class="other-apps"></div>
                 </div>
             </div>
         </section>
